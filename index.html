@@ -414,20 +414,50 @@ API REQUEST
 ===========================================================
 */
 async function fetchStandings() {
-    const url =
-        PROXY +
-        encodeURIComponent(NHL_API);
+
+    const today = new Date();
+
+    const date =
+        today.getFullYear() +
+        "-" +
+        String(today.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(today.getDate()).padStart(2, "0");
+
+    const nhlUrl =
+        `https://api-web.nhle.com/v1/standings/${date}`;
+
+    /*
+     * allorigins fetch endpoint
+     */
+    const proxyUrl =
+        "https://api.allorigins.win/raw?url=" +
+        encodeURIComponent(nhlUrl);
+
     const response =
-        await fetch(url, {
-            method: "GET",
+        await fetch(proxyUrl, {
             cache: "no-store"
         });
+
     if (!response.ok) {
         throw new Error(
-            "HTTP " + response.status
+            `Proxy HTTP ${response.status}`
         );
     }
-    return await response.json();
+
+    const data =
+        await response.json();
+
+    if (
+        !data ||
+        !Array.isArray(data.standings)
+    ) {
+        throw new Error(
+            "Invalid NHL standings response."
+        );
+    }
+
+    return data;
 }
 /*
 ===========================================================
