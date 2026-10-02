@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NHL Projected Standings</title>
+<style>
+    :root {
+        --bg: #f4f5f7;
+        --card: #ffffff;
+        --text: #17181a;
+        --secondary: #73777d;
+        --border: #e1e3e6;
+        --blue: #0b3d91;
+        --blue-dark: #062b67;
+        --green: #1f9d55;
+        --green-bg: #e8f7ee;
+        --yellow: #d79b00;
+        --yellow-bg: #fff6d8;
+        --gray-bg: #f0f1f3;
+        --shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+    * {
+        box-sizing: border-box;
+    }
+    body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                     Roboto, Helvetica, Arial, sans-serif;
+    }
+    header {
+        background: linear-gradient(135deg, var(--blue-dark), var(--blue));
+        color: white;
+        padding: 28px 20px 24px;
+    }
+    .header-inner {
+        max-width: 1250px;
+        margin: auto;
+    }
+    h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 750;
+        letter-spacing: -0.5px;
+    }
+    .subtitle {
+        margin-top: 6px;
+        opacity: 0.8;
+        font-size: 14px;
+    }
+    .controls {
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    button {
+        border: none;
+        background: white;
+        color: var(--blue-dark);
+        border-radius: 9px;
+        padding: 9px 15px;
+        font-size: 14px;
+        font-weight: 650;
+        cursor: pointer;
+    }
+    button:hover {
+        background: #eef3fb;
+    }
+    .last-update {
+        font-size: 13px;
+        opacity: 0.8;
+    }
+    main {
+        max-width: 1250px;
+        margin: 25px auto 50px;
+        padding: 0 15px;
+    }
+    .info-box {
+        background: white;
+        border-radius: 12px;
+        padding: 15px 17px;
+        margin-bottom: 22px;
+        box-shadow: var(--shadow);
+        font-size: 13px;
+        color: var(--secondary);
+    }
+    .info-box strong {
+        color: var(--text);
+    }
+    .conference {
+        margin-bottom: 35px;
+    }
+    .conference-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 15px;
+        font-size: 24px;
+    }
+    .conference-title::before {
+        content: "";
+        width: 5px;
+        height: 25px;
+        border-radius: 3px;
+        background: var(--blue);
+    }
+    .division-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+    }
+    .division {
+        background: var(--card);
+        border-radius: 13px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+    .division-header {
+        background: #fafafa;
+        border-bottom: 1px solid var(--border);
+        padding: 13px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .division-name {
+        font-size: 17px;
+        font-weight: 700;
+    }
+    .division-subtitle {
+        color: var(--secondary);
+        font-size: 11px;
+    }
+    .team {
+        display: grid;
+        grid-template-columns: 27px 42px minmax(0, 1fr) 48px 55px 72px;
+        align-items: center;
+        gap: 8px;
+        min-height: 63px;
+        padding: 8px 13px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+    }
+    .team:last-child {
+        border-bottom: none;
+    }
+    .team.playoff {
+        background: var(--green-bg);
+    }
+    .team.wildcard {
+        background: var(--yellow-bg);
+    }
+    .team.out {
+        background: white;
+    }
+    .status-bar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+    }
+    .playoff .status-bar {
+        background: var(--green);
+    }
+    .wildcard .status-bar {
+        background: var(--yellow);
+    }
+    .rank {
+        text-align: center;
+        font-size: 13px;
+        color: var(--secondary);
+        font-weight: 600;
+    }
+    .logo {
+        width: 34px;
+        height: 34px;
+        object-fit: contain;
+    }
+    .team-info {
+        min-width: 0;
+    }
+    .team-name {
+        font-weight: 650;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .team-code {
+        color: var(--secondary);
+        font-size: 11px;
+        margin-top: 2px;
+    }
+    .stat {
+        text-align: right;
+    }
+    .stat-value {
+        font-size: 14px;
+        font-weight: 650;
+    }
+    .stat-label {
+        color: var(--secondary);
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .projected {
+        font-size: 16px;
+        font-weight: 750;
+    }
+    .projected::after {
+        content: " PTS";
+        font-size: 9px;
+        font-weight: 500;
+        color: var(--secondary);
+    }
+    .status {
+        text-align: right;
+        font-size: 10px;
+        font-weight: 750;
+        text-transform: uppercase;
+    }
+    .status.playoff-text {
+        color: var(--green);
+    }
+    .status.wildcard-text {
+        color: var(--yellow);
+    }
+    .status.out-text {
+        color: var(--secondary);
+    }
+    .wildcard-section {
+        margin-top: 20px;
+        background: white;
+        border-radius: 13px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+    .wildcard-header {
+        padding: 14px 15px;
+        border-bottom: 1px solid var(--border);
+        font-size: 16px;
+        font-weight: 700;
+    }
+    .wildcard-team {
+        display: grid;
+        grid-template-columns: 30px 40px minmax(0, 1fr) 55px 75px;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--border);
+    }
+    .wildcard-team:last-child {
+        border-bottom: none;
+    }
+    .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 17px;
+        color: var(--secondary);
+        font-size: 12px;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+    .green-dot {
+        background: var(--green);
+    }
+    .yellow-dot {
+        background: var(--yellow);
+    }
+    .gray-dot {
+        background: #aaa;
+    }
+    .loading,
+    .error {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        text-align: center;
+        box-shadow: var(--shadow);
+    }
+    .error {
+        color: #a00000;
+    }
+    .spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #ddd;
+        border-top-color: var(--blue);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    @media (max-width: 800px) {
+        .division-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    @media (max-width: 600px) {
+        header {
+            padding: 22px 15px;
+        }
+        h1 {
+            font-size: 24px;
+        }
+        main {
+            margin-top: 17px;
+        }
+        .team {
+            grid-template-columns: 23px 36px minmax(0, 1fr) 48px 65px;
+            gap: 6px;
+            padding: 8px 10px;
+        }
+        .team .stat:nth-of-type(2) {
+            display: none;
+        }
+        .team-name {
+            font-size: 13px;
+        }
+        .logo {
+            width: 31px;
+            height: 31px;
+        }
+        .status {
+            display: none;
+        }
+        .projected {
+            font-size: 15px;
+        }
+        .wildcard-team {
+            grid-template-columns: 25px 36px minmax(0, 1fr) 55px;
+        }
+        .wildcard-team .status {
+            display: none;
+        }
+    }
+</style>
+</head>
+<body>
+<header>
+    <div class="header-inner">
+    <h1>NHL Projected Standings</h1>
+    <div class="subtitle">
+        Current standings · projected over 84 games
+    </div>
+    <div class="controls">
+        <div class="last-update" id="lastUpdate">
+            Loading...
+        </div>
+        <button onclick="loadStandings()">
+            ↻ Refresh
+        </button>
+    </div>
+</div>
+</header>
+<main>
+<div class="info-box">
+    <strong>Projected points</strong> are calculated as
+    <strong>current points ÷ games played × 84</strong>.
+    Playoff status is based on the team's current official
+    position, not on the projected points.
+</div>
+<div id="content">
+    <div class="loading">
+        <div class="spinner"></div>
+        <p>Loading NHL standings...</p>
+    </div>
+</div>
+</main>
+<script>
+const API_URL = "https://api-web.nhle.com/v1/standings/now";
+/*
+ * If the NHL API blocks direct browser requests because of CORS,
+ * this optional public proxy is used as a fallback.
+ *
+ * The page remains completely frontend-only.
+ */
+const CORS_PROXY =
+    "https://corsproxy.io/?url=";
+/* ---------------------------------------------------------
+   Utility functions
+--------------------------------------------------------- */
+function getName(team) {
+    if (team.teamName && team.teamName.default) {
+        return team.teamName.default;
+    }
+    if (team.teamCommonName && team.teamCommonName.default) {
+        return team.teamCommonName.default;
+    }
+    return team.teamAbbrev?.default || "Unknown";
+}
+function getConference(team) {
+    return (
+        team.conferenceName?.default ||
+        team.conferenceName ||
+        ""
+    );
+}
+function getDivision(team) {
+    return (
+        team.divisionName?.default ||
+        team.divisionName ||
+        ""
+    );
+}
+function getAbbrev(team) {
+    return (
+        team.teamAbbrev?.default ||
+        team.teamAbbrev ||
+        ""
+    );
+}
+function getLogo(team) {
+    return team.teamLogo || "";
+}
+/*
+ * Calculate the points pace over a complete 84-game season.
+ */
+function projectedPoints(team) {
+    const games =
+        Number(team.gamesPlayed ?? team.gp ?? 0);
+    const points =
+        Number(team.points ?? 0);
+    if (games <= 0) {
+        return 0;
+    }
+    return points / games * 84;
+}
+/*
+ * Return the team's current playoff status.
+   NHL format:
+   - Top 3 teams in each division
+   - Two additional Wild Cards per conference
+*/
+function getCurrentStatus(team, allTeams) {
+    const conference = getConference(team);
+    const division = getDivision(team);
+    const conferenceTeams = allTeams
+        .filter(t => getConference(t) === conference);
+    const divisionTeams = conferenceTeams
+        .filter(t => getDivision(t) === division)
+        .sort(compareOfficialStanding);
+    const divisionPosition =
+        divisionTeams.findIndex(t =>
+            getAbbrev(t) === getAbbrev(team)
+        ) + 1;
+    if (divisionPosition >= 1 && divisionPosition <= 3) {
+        return {
+            type: "playoff",
+            text: "PLAYOFF"
+        };
+    }
+    /*
+     * Teams outside the top 3 of each division are
+     * ranked for the two Wild Card positions.
+     */
+    const nonDivisionTop3 = conferenceTeams
+        .filter(t => {
+            const div = getDivision(t);
+            const divTeams = conferenceTeams
+                .filter(x => getDivision(x) === div)
+                .sort(compareOfficialStanding);
+            return divTeams
+                .slice(0, 3)
+                .every(x => getAbbrev(x) !== getAbbrev(t));
+        })
+        .sort(compareOfficialStanding);
+    const wildcardIndex =
+        nonDivisionTop3.findIndex(t =>
+            getAbbrev(t) === getAbbrev(team)
+        );
+    if (wildcardIndex >= 0 && wildcardIndex < 2) {
+        return {
+            type: "wildcard",
+            text: "WILD CARD"
+        };
+    }
+    return {
+        type: "out",
+        text: "OUTSIDE"
+    };
+}
+/*
+ * NHL official standings order.
+   We primarily use the ranks supplied by the API.
+   The fallbacks make the page robust if fields change.
+ */
+function compareOfficialStanding(a, b) {
+    const ar =
+        Number(a.conferenceSequence ?? a.leagueSequence ?? 999);
+    const br =
+        Number(b.conferenceSequence ?? b.leagueSequence ?? 999);
+    if (ar !== br) {
+        return ar - br;
+    }
+    return Number(b.points ?? 0) -
+           Number(a.points ?? 0);
+}
+/* ---------------------------------------------------------
+   HTML
+--------------------------------------------------------- */
+function createTeamHTML(team, allTeams, divisionIndex) {
+    const name = getName(team);
+    const abbrev = getAbbrev(team);
+    const logo = getLogo(team);
+    const gp =
+        Number(team.gamesPlayed ?? 0);
+    const points =
+        Number(team.points ?? 0);
+    const projected =
+        projectedPoints(team);
+    const status =
+        getCurrentStatus(team, allTeams);
+    const position =
+        divisionIndex + 1;
+    return `
+        <div class="team ${status.type}">
+            <div class="status-bar"></div>
+            <div class="rank">
+                ${position}
+            </div>
+            <div>
+                ${
+                    logo
+                    ? `<img class="logo"
+                            src="${logo}"
+                            alt="${name} logo"
+                            loading="lazy">`
+                    : ""
+                }
+            </div>
+            <div class="team-info">
+                <div class="team-name">
+                    ${name}
+                </div>
+                <div class="team-code">
+                    ${abbrev}
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">
+                    ${gp}
+                </div>
+                <div class="stat-label">
+                    GP
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">
+                    ${points}
+                </div>
+                <div class="stat-label">
+                    Actual
+                </div>
+            </div>
+            <div class="stat">
+                <div class="projected">
+                    ${projected.toFixed(1)}
+                </div>
+                <div class="stat-label">
+                    84 GP pace
+                </div>
+            </div>
+            <div class="status ${
+                status.type === "playoff"
+                    ? "playoff-text"
+                    : status.type === "wildcard"
+                        ? "wildcard-text"
+                        : "out-text"
+            }">
+                ${status.text}
+            </div>
+        </div>
+    `;
+}
+function createDivisionHTML(
+    divisionName,
+    teams,
+    allTeams
+) {
+    /*
+     * For the displayed table we sort by projected points.
+     */
+    const sorted = [...teams].sort(
+        (a, b) =>
+            projectedPoints(b) -
+            projectedPoints(a)
+    );
+    return `
+        <section class="division">
+            <div class="division-header">
+                <div class="division-name">
+                    ${divisionName}
+                </div>
+                <div class="division-subtitle">
+                    Projected points
+                </div>
+            </div>
+            ${sorted.map((team, index) =>
+                createTeamHTML(
+                    team,
+                    allTeams,
+                    index
+                )
+            ).join("")}
+        </section>
+    `;
+}
+/* ---------------------------------------------------------
+   Wild Card section
+--------------------------------------------------------- */
+function createWildCardHTML(
+    conferenceName,
+    teams,
+    allTeams
+) {
+    const topThree = new Set();
+    /*
+     * Remove the top 3 from each division.
+     */
+    const divisions = [
+        ...new Set(
+            teams.map(t => getDivision(t))
+        )
+    ];
+    divisions.forEach(division => {
+        const divisionTeams = teams
+            .filter(t =>
+                getDivision(t) === division
+            )
+            .sort(compareOfficialStanding);
+        divisionTeams
+            .slice(0, 3)
+            .forEach(t =>
+                topThree.add(getAbbrev(t))
+            );
+    });
+    const wildcards = teams
+        .filter(t =>
+            !topThree.has(getAbbrev(t))
+        )
+        .sort(compareOfficialStanding)
+        .slice(0, 2);
+    /*
+     * The next two are the closest teams outside
+     * the current Wild Card spots.
+     */
+    const nextTeams = teams
+        .filter(t =>
+            !topThree.has(getAbbrev(t))
+        )
+        .sort(compareOfficialStanding)
+        .slice(2, 4);
+    return `
+        <section class="wildcard-section">
+            <div class="wildcard-header">
+                ${conferenceName} Wild Card
+            </div>
+            ${wildcards.map((team, index) => {
+                const logo = getLogo(team);
+                const name = getName(team);
+                const projected = projectedPoints(team);
+                return `
+                    <div class="wildcard-team">
+                        <div class="rank">
+                            WC${index + 1}
+                        </div>
+                        <div>
+                            ${
+                                logo
+                                ? `<img class="logo"
+                                        src="${logo}"
+                                        alt="${name} logo">`
+                                : ""
+                            }
+                        </div>
+                        <div class="team-info">
+                            <div class="team-name">
+                                ${name}
+                            </div>
+                            <div class="team-code">
+                                ${getAbbrev(team)}
+                            </div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">
+                                ${team.points}
+                            </div>
+                            <div class="stat-label">
+                                Actual
+                            </div>
+                        </div>
+                        <div class="projected">
+                            ${projected.toFixed(1)}
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+            <div class="wildcard-header"
+                 style="font-size:13px;color:#73777d">
+                Next teams outside Wild Card
+            </div>
+            ${nextTeams.map((team, index) => {
+                const logo = getLogo(team);
+                const name = getName(team);
+                const projected = projectedPoints(team);
+                return `
+                    <div class="wildcard-team">
+                        <div class="rank">
+                            ${index + 3}
+                        </div>
+                        <div>
+                            ${
+                                logo
+                                ? `<img class="logo"
+                                        src="${logo}"
+                                        alt="${name} logo">`
+                                : ""
+                            }
+                        </div>
+                        <div class="team-info">
+                            <div class="team-name">
+                                ${name}
+                            </div>
+                            <div class="team-code">
+                                ${getAbbrev(team)}
+                            </div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">
+                                ${team.points}
+                            </div>
+                            <div class="stat-label">
+                                Actual
+                            </div>
+                        </div>
+                        <div class="projected">
+                            ${projected.toFixed(1)}
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </section>
+    `;
+}
+/* ---------------------------------------------------------
+   Conference
+--------------------------------------------------------- */
+function createConferenceHTML(
+    conferenceName,
+    teams
+) {
+    const divisions = [
+        ...new Set(
+            teams.map(t => getDivision(t))
+        )
+    ];
+    const divisionHTML =
+        divisions.map(division => {
+            const divisionTeams =
+                teams.filter(t =>
+                    getDivision(t) === division
+                );
+            return createDivisionHTML(
+                division,
+                divisionTeams,
+                teams
+            );
+        }).join("");
+    return `
+        <section class="conference">
+            <h2 class="conference-title">
+                ${conferenceName}
+            </h2>
+            <div class="division-grid">
+                ${divisionHTML}
+            </div>
+            ${createWildCardHTML(
+                conferenceName,
+                teams,
+                teams
+            )}
+        </section>
+    `;
+}
+/* ---------------------------------------------------------
+   Load NHL data
+--------------------------------------------------------- */
+async function fetchNHL(url) {
+    /*
+     * First try direct access to the NHL API.
+     */
+    try {
+        const response =
+            await fetch(url, {
+                cache: "no-store"
+            });
+        if (!response.ok) {
+            throw new Error(
+                `HTTP ${response.status}`
+            );
+        }
+        return await response.json();
+    } catch (directError) {
+        /*
+         * Browser CORS fallback.
+         */
+        console.warn(
+            "Direct NHL API request failed. Trying CORS proxy.",
+            directError
+        );
+        const proxyURL =
+            CORS_PROXY +
+            encodeURIComponent(url);
+        const response =
+            await fetch(proxyURL, {
+                cache: "no-store"
+            });
+        if (!response.ok) {
+            throw new Error(
+                `HTTP ${response.status}`
+            );
+        }
+        return await response.json();
+    }
+}
+async function loadStandings() {
+    const content =
+        document.getElementById("content");
+    const lastUpdate =
+        document.getElementById("lastUpdate");
+    content.innerHTML = `
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>
+                Loading NHL standings...
+            </p>
+        </div>
+    `;
+    lastUpdate.textContent =
+        "Updating...";
+    try {
+        const data =
+            await fetchNHL(API_URL);
+        const teams =
+            data.standings || [];
+        if (!teams.length) {
+            throw new Error(
+                "No standings were returned by the NHL API."
+            );
+        }
+        /*
+         * Find conferences dynamically instead of
+         * hard-coding Eastern/Western.
+         */
+        const conferences = [
+            ...new Set(
+                teams.map(t =>
+                    getConference(t)
+                )
+            )
+        ];
+        /*
+         * Prefer the normal NHL ordering.
+         */
+        conferences.sort((a, b) => {
+            const order = {
+                "Eastern": 0,
+                "Western": 1
+            };
+            return (
+                (order[a] ?? 99) -
+                (order[b] ?? 99)
+            );
+        });
+        content.innerHTML = conferences
+            .map(conference => {
+                const conferenceTeams =
+                    teams.filter(t =>
+                        getConference(t) === conference
+                    );
+                return createConferenceHTML(
+                    conference,
+                    conferenceTeams
+                );
+            })
+            .join("");
+        const now =
+            new Date();
+        lastUpdate.textContent =
+            "Last updated: " +
+            now.toLocaleTimeString(
+                undefined,
+                {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                }
+            );
+    } catch (error) {
+        console.error(error);
+        content.innerHTML = `
+            <div class="error">
+                <strong>
+                    Could not load NHL standings.
+                </strong>
+                <p>
+                    ${error.message}
+                </p>
+                <button onclick="loadStandings()">
+                    Try again
+                </button>
+            </div>
+        `;
+        lastUpdate.textContent =
+            "Update failed";
+    }
+}
+/*
+ * Load automatically when the page opens.
+ */
+loadStandings();
+/*
+ * Automatically refresh every 5 minutes.
+ */
+setInterval(
+    loadStandings,
+    5 * 60 * 1000
+);
+</script>
+</body>
+</html>
